@@ -34,3 +34,11 @@ PayPal Sandbox checkout creates an approval link. The app does not capture payme
 - **Gemini:** Negotiation responses and an agreement-only PayPal checkout tool call.
 - **PayPal Sandbox:** Creates an order and returns the buyer approval URL.
 - **Zapier:** Optional asynchronous webhook notification after PayPal order creation.
+- ## 🤖 AI & Technology Stack
+
+* **Google Gemini:** Powers the real-time AI negotiation agent, dynamically counter-offering buyers based on seller-defined floor constraints.
+* **AG Grid:** Renders the interactive, editable inventory management table for sellers.
+* **Zapier:** Executes automated webhook notifications upon successful deal closures.
+* **PayPal Sandbox:** Handles secure online payment processing.
+* **Render:** Hosts the live, automated cloud deployment.
+* **APIMatic:** Validates and documents the OpenAPI 3.0 endpoints.
