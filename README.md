@@ -8,6 +8,7 @@
 [![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google%20gemini&logoColor=white)](https://deepmind.google/technologies/gemini/)
 [![PayPal Sandbox](https://img.shields.io/badge/PayPal-003087?style=for-the-badge&logo=paypal&logoColor=white)](https://developer.paypal.com)
 [![Zapier](https://img.shields.io/badge/Zapier-FF4A00?style=for-the-badge&logo=zapier&logoColor=white)](https://zapier.com)
+[![Streamlit Cloud](https://img.shields.io/badge/Streamlit%20Cloud-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://share.streamlit.io)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
 
 ---
@@ -44,7 +45,7 @@
 | **AG Grid** | **Interactive Inventory Control:** Powers the Seller Dashboard with an editable, high-performance table to configure live prices and protected margins. |
 | **PayPal Sandbox** | **Payment Session Creation:** Generates secure buyer approval links immediately upon agreed negotiations without holding sensitive card data. |
 | **Zapier** | **Automated Deal Dispatch:** Emits a `DEAL_FINALIZED` webhook payload (`PAYPAL_CHECKOUT_CREATED`) to dispatch instant seller notifications & receipt logs. |
-| **Render** | **Cloud Hosting:** Continuous integration deployment via `render.yaml` Blueprint managing environment secrets securely. |
+| **Streamlit Community Cloud** | **Zero-Friction Hosting:** Powers live application deployment with encrypted secrets management and automated continuous integration via GitHub.  |
 | **APIMatic** | **API Specification Standard:** Validates structural consistency against OpenAPI 3.0 standards (`openapi.yaml`). |
 
 ---```markdown
