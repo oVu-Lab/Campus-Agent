@@ -1,44 +1,102 @@
-# CampusAgent
+```markdown
+<div align="center">
 
-CampusAgent is a Streamlit demo for campus marketplace negotiations. Gemini handles the conversation, seller controls set the listing and protected floor, PayPal Sandbox creates an approval order after an agreement, and Zapier can receive a deal event after order creation.
+# 🎓 CampusAgent
+### Autonomous AI Negotiation & Automated Campus Marketplace
 
-## Run locally
+[![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)](https://streamlit.io)
+[![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=google%20gemini&logoColor=white)](https://deepmind.google/technologies/gemini/)
+[![PayPal Sandbox](https://img.shields.io/badge/PayPal-003087?style=for-the-badge&logo=paypal&logoColor=white)](https://developer.paypal.com)
+[![Zapier](https://img.shields.io/badge/Zapier-FF4A00?style=for-the-badge&logo=zapier&logoColor=white)](https://zapier.com)
+[![Render](https://img.shields.io/badge/Render-000000?style=for-the-badge&logo=render&logoColor=white)](https://render.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
+
+---
+
+> **CampusAgent** transforms university secondhand trading by deploying autonomous **Google Gemini AI** agents to negotiate item prices on behalf of student sellers within strict floor-price guardrails, concluding transactions instantly via **PayPal Sandbox** and **Zapier** automation.
+
+</div>
+
+---
+
+## 📸 Key Capabilities & Visual Overview
+
+```text
+  [ Student Buyer ]               [ Gemini AI Negotiator ]           [ Seller Dashboard ]
+          │                                  │                                │
+          ├─── 1. Counter-Offers Price ─────►│                                │
+          │                                  ├─── 2. Checks AG Grid Limits ──►│
+          │◄── 3. Dynamic Counter/Accept ────┤                                │
+          │                                  │                                │
+          ├─── 4. Initiates Checkout ───────►│                                │
+          │                                  ├─── 5. Creates Payment Link ───► (PayPal Sandbox)
+          │                                  │                                │
+          │                                  └─── 6. Triggers Deal Webhook ──► (Zapier Alert)
+
+```
+
+---
+
+## 🤖 AI & Technology Stack
+
+| Sponsor / Tool | Tech Role & Implementation Details |
+| --- | --- |
+|  **Google Gemini** | **AI Negotiation Engine:** Processes real-time buyer conversations, evaluating offers dynamically against protected floor prices to counter or accept deals. |
+|  **AG Grid** | **Interactive Inventory Control:** Powers the Seller Dashboard with an editable, high-performance table to configure live prices and protected margins. |
+|  **PayPal Sandbox** | **Payment Session Creation:** Generates secure buyer approval links immediately upon agreed negotiations without holding sensitive card data. |
+|  **Zapier** | **Automated Deal Dispatch:** Emits a `DEAL_FINALIZED` webhook payload (`PAYPAL_CHECKOUT_CREATED`) to dispatch instant seller notifications & receipt logs. |
+|  **Render** | **Cloud Hosting:** Continuous integration deployment via `render.yaml` Blueprint managing environment secrets securely. |
+|  **APIMatic** | **API Specification Standard:** Validates structural consistency against OpenAPI 3.0 standards (`openapi.yaml`). |
+
+---
+
+## 🚀 Local Quickstart Guide
+
+### 1. Clone & Setup Virtual Environment
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-streamlit run APP.py
+
 ```
 
-For local testing, enter credentials in the password fields in the private Seller dashboard. They remain in the current Streamlit session. For repeatable local setup, add them to `.streamlit/secrets.toml` (that file is git-ignored):
+### 2. Configure Environment Secrets
+
+For repeatable local development, create `.streamlit/secrets.toml` *(git-ignored)*:
 
 ```toml
-GEMINI_API_KEY = "..."
-PAYPAL_CLIENT_ID = "..."
-PAYPAL_SECRET = "..."
-ZAPIER_WEBHOOK_URL = "..."
+GEMINI_API_KEY = "your-gemini-key"
+PAYPAL_CLIENT_ID = "your-paypal-id"
+PAYPAL_SECRET = "your-paypal-secret"
+ZAPIER_WEBHOOK_URL = "your-zapier-url" # Optional
+
 ```
 
-Deployment environment variables take precedence over Streamlit secrets and session inputs. Zapier is optional; Gemini and PayPal Sandbox credentials are needed for live negotiation and checkout.
+### 3. Launch App
 
-## Deploy on Render
+```bash
+streamlit run APP.py
 
-The repository includes a `render.yaml` Blueprint for the Streamlit app. Connect the repository in Render and provide `GEMINI_API_KEY`, `PAYPAL_CLIENT_ID`, and `PAYPAL_SECRET` in the service environment. Add `ZAPIER_WEBHOOK_URL` if deal notifications are enabled. The app binds to Render's `PORT` and uses the Streamlit health endpoint.
+```
 
-PayPal Sandbox checkout creates an approval link. The app does not capture payment or claim that an order has been paid. Zapier receives a `DEAL_FINALIZED` event with status `PAYPAL_CHECKOUT_CREATED` after the order and approval link are created.
+---
 
-## Integrations
+## ☁️ Render Blueprint Deployment
 
-- **AG Grid:** Seller inventory table with editable listing price and protected floor. Changes sync into Streamlit session state and the same guardrails used by Gemini and PayPal.
-- **Gemini:** Negotiation responses and an agreement-only PayPal checkout tool call.
-- **PayPal Sandbox:** Creates an order and returns the buyer approval URL.
-- **Zapier:** Optional asynchronous webhook notification after PayPal order creation.
-- ## 🤖 AI & Technology Stack
+The repo includes a pre-configured `render.yaml` Blueprint.
 
-* **Google Gemini:** Powers the real-time AI negotiation agent, dynamically counter-offering buyers based on seller-defined floor constraints.
-* **AG Grid:** Renders the interactive, editable inventory management table for sellers.
-* **Zapier:** Executes automated webhook notifications upon successful deal closures.
-* **PayPal Sandbox:** Handles secure online payment processing.
-* **Render:** Hosts the live, automated cloud deployment.
-* **APIMatic:** Validates and documents the OpenAPI 3.0 endpoints.
+1. Connect `Campus-Agent` on **Render**.
+2. Set Environment Variables in Render: `GEMINI_API_KEY`, `PAYPAL_CLIENT_ID`, `PAYPAL_SECRET`, `ZAPIER_WEBHOOK_URL`.
+3. Render automatically binds to `$PORT` using Streamlit health checks!
+
+---
+
+## 📜 License
+
+Distributed under the **MIT License**. See [`LICENSE`](https://www.google.com/search?q=./LICENSE) for full details.
+
+```
+
+```
