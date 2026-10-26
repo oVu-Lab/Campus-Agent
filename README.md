@@ -94,7 +94,7 @@ The repo includes a pre-configured `render.yaml` Blueprint.
 
 ## 📜 License
 
-Distributed under the **MIT License**. See [`LICENSE`](https://www.google.com/search?q=./LICENSE) for full details.
+Distributed under the **MIT License**. See [`LICENSE`](https://github.com/oVu-Lab/Campus-Agent/blob/main/LICENSE) for full details.
 
 ```
 
