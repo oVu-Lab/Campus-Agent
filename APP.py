@@ -9,6 +9,11 @@ import re
 
 import requests
 import streamlit as st
+from dotenv import load_dotenv
+from streamlit.errors import StreamlitSecretNotFoundError
+
+
+load_dotenv()
 
 invalidate_caches()
 try:
@@ -32,9 +37,13 @@ HARD_FLOOR = Decimal("65.00")
 
 PAYPAL_TOKEN_URL = "https://api-m.sandbox.paypal.com/v1/oauth2/token"
 PAYPAL_ORDERS_URL = "https://api-m.sandbox.paypal.com/v2/checkout/orders"
-APP_BASE_URL = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8501").rstrip("/")
-PAYPAL_RETURN_URL = os.getenv("PAYPAL_RETURN_URL", f"{APP_BASE_URL}/?paypal=success")
-PAYPAL_CANCEL_URL = os.getenv("PAYPAL_CANCEL_URL", f"{APP_BASE_URL}/?paypal=cancel")
+APP_BASE_URL = os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:8501").rstrip("/")
+PAYPAL_RETURN_URL = os.environ.get(
+    "PAYPAL_RETURN_URL", f"{APP_BASE_URL}/?paypal=success"
+)
+PAYPAL_CANCEL_URL = os.environ.get(
+    "PAYPAL_CANCEL_URL", f"{APP_BASE_URL}/?paypal=cancel"
+)
 
 GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]
 GEMINI_API_URL = (
@@ -46,22 +55,28 @@ LOGGER = logging.getLogger(__name__)
 
 def external_config_value(name: str) -> str:
     """Read a deployment setting from the environment or Streamlit secrets."""
-    environment_value = os.getenv(name, "").strip()
-    if environment_value:
-        return environment_value
-    try:
-        return str(st.secrets.get(name, "")).strip()
-    except Exception:
+    value = os.environ.get(name, "").strip()
+    if not value:
+        try:
+            value = str(st.secrets.get(name, "")).strip()
+        except StreamlitSecretNotFoundError:
+            value = ""
+
+    if value.lower().startswith(("your_", "replace_", "changeme")):
         return ""
+    return value
 
 
 def config_value(name: str, local_key: str | None = None) -> str:
-    """Prefer deployment secrets, then allow an in-session local-dev value."""
+    """Prefer environment configuration, then accept an in-session fallback."""
     configured = external_config_value(name)
     if configured:
         return configured
     state_key = local_key or f"local_{name.lower()}"
-    return str(st.session_state.get(state_key, "")).strip()
+    value = str(st.session_state.get(state_key, "")).strip()
+    if value.lower().startswith(("your_", "replace_", "changeme")):
+        return ""
+    return value
 
 
 def missing_credentials() -> list[str]:
@@ -100,11 +115,14 @@ def current_item_description() -> str:
 
 
 def configured_zapier_webhook_url(override: str | None = None) -> str:
-    """Resolve a deployment secret first, then the optional local-dev input."""
+    """Prefer deployment configuration, then use the optional session value."""
     configured = external_config_value("ZAPIER_WEBHOOK_URL")
     if configured:
         return configured
-    return (override or st.session_state.get("zapier_webhook_url", "")).strip()
+    value = (override or st.session_state.get("zapier_webhook_url", "")).strip()
+    if value.lower().startswith(("your_", "replace_", "changeme")):
+        return ""
+    return value
 
 
 def trigger_zapier_webhook(
@@ -113,7 +131,7 @@ def trigger_zapier_webhook(
     webhook_url: str | None = None,
 ) -> dict[str, object]:
     """Send a finalized deal event to a configured Zapier Catch Hook."""
-    destination = configured_zapier_webhook_url(webhook_url)
+    destination = (webhook_url or configured_zapier_webhook_url()).strip()
     if not destination:
         return {"ok": False, "error": "Zapier webhook URL is not configured."}
 
@@ -2339,30 +2357,33 @@ with st.sidebar:
             key="seller_persona",
         )
         st.markdown("#### Integration credentials")
+        st.caption(
+            "Values from `.env` or deployment secrets take priority. Otherwise, "
+            "entries below are kept only in this Streamlit session."
+        )
         for credential_name, credential_label in (
             ("GEMINI_API_KEY", "Gemini API key"),
             ("PAYPAL_CLIENT_ID", "PayPal Sandbox client ID"),
             ("PAYPAL_SECRET", "PayPal Sandbox secret"),
         ):
             if external_config_value(credential_name):
-                st.caption(f"{credential_label}: configured by deployment")
+                st.caption(f"{credential_label}: configured")
             else:
                 st.text_input(
                     credential_label,
                     type="password",
                     key=f"local_{credential_name.lower()}",
-                    help=f"Set {credential_name} in Render or Streamlit secrets for deployment.",
+                    help=f"Alternatively, set {credential_name} in `.env`.",
                 )
         if external_config_value("ZAPIER_WEBHOOK_URL"):
-            st.caption("Zapier webhook: configured by deployment")
+            st.caption("Zapier webhook: configured")
         else:
             st.text_input(
-                "Zapier webhook URL",
+                "Zapier webhook URL (optional)",
                 type="password",
                 key="zapier_webhook_url",
-                help="Set ZAPIER_WEBHOOK_URL in Render or Streamlit secrets for deployment.",
+                help="Alternatively, set ZAPIER_WEBHOOK_URL in `.env`.",
             )
-        st.caption("Integration values entered here stay in this browser session only.")
         st.markdown(
             '<div class="agent-proxy-badge"><span class="agent-proxy-badge-dot"></span>Agent Proxy Active</div>',
             unsafe_allow_html=True,
@@ -2644,9 +2665,7 @@ if user_input:
             st.session_state.active_price = st.session_state.final_price
             st.session_state.checkout_celebration = True
             if not st.session_state.zapier_triggered_for_deal:
-                webhook_url = configured_zapier_webhook_url(
-                    st.session_state.get("zapier_webhook_url", "")
-                )
+                webhook_url = configured_zapier_webhook_url()
                 st.session_state.zapier_triggered_for_deal = True
                 if webhook_url:
                     st.session_state.zapier_status = "pending"

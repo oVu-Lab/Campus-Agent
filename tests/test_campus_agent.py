@@ -89,6 +89,24 @@ def test_app_renders_without_errors(monkeypatch):
     app = AppTest.from_file(str(APP_PATH)).run()
 
     assert not app.exception
+    assert any("GEMINI_API_KEY" in warning.value for warning in app.warning)
+
+
+def test_sidebar_accepts_session_only_credentials(monkeypatch):
+    for name in ("GEMINI_API_KEY", "PAYPAL_CLIENT_ID", "PAYPAL_SECRET"):
+        monkeypatch.delenv(name, raising=False)
+
+    app = AppTest.from_file(str(APP_PATH)).run()
+    for key, value in (
+        ("local_gemini_api_key", "session-gemini-key"),
+        ("local_paypal_client_id", "session-paypal-client"),
+        ("local_paypal_secret", "session-paypal-secret"),
+    ):
+        app.text_input(key=key).set_value(value)
+    app.run()
+
+    assert not app.exception
+    assert not any("GEMINI_API_KEY" in warning.value for warning in app.warning)
 
 
 def test_agreed_price_creates_paypal_checkout(monkeypatch):
