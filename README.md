@@ -1,4 +1,3 @@
-```markdown
 <div align="center">
 
 # 🎓 CampusAgent
@@ -42,12 +41,12 @@
 
 | Sponsor / Tool | Tech Role & Implementation Details |
 | --- | --- |
-|  **Google Gemini** | **AI Negotiation Engine:** Processes real-time buyer conversations, evaluating offers dynamically against protected floor prices to counter or accept deals. |
-|  **AG Grid** | **Interactive Inventory Control:** Powers the Seller Dashboard with an editable, high-performance table to configure live prices and protected margins. |
-|  **PayPal Sandbox** | **Payment Session Creation:** Generates secure buyer approval links immediately upon agreed negotiations without holding sensitive card data. |
-|  **Zapier** | **Automated Deal Dispatch:** Emits a `DEAL_FINALIZED` webhook payload (`PAYPAL_CHECKOUT_CREATED`) to dispatch instant seller notifications & receipt logs. |
-|  **Render** | **Cloud Hosting:** Continuous integration deployment via `render.yaml` Blueprint managing environment secrets securely. |
-|  **APIMatic** | **API Specification Standard:** Validates structural consistency against OpenAPI 3.0 standards (`openapi.yaml`). |
+| **Google Gemini** | **AI Negotiation Engine:** Processes real-time buyer conversations, evaluating offers dynamically against protected floor prices to counter or accept deals. |
+| **AG Grid** | **Interactive Inventory Control:** Powers the Seller Dashboard with an editable, high-performance table to configure live prices and protected margins. |
+| **PayPal Sandbox** | **Payment Session Creation:** Generates secure buyer approval links immediately upon agreed negotiations without holding sensitive card data. |
+| **Zapier** | **Automated Deal Dispatch:** Emits a `DEAL_FINALIZED` webhook payload (`PAYPAL_CHECKOUT_CREATED`) to dispatch instant seller notifications & receipt logs. |
+| **Render** | **Cloud Hosting:** Continuous integration deployment via `render.yaml` Blueprint managing environment secrets securely. |
+| **APIMatic** | **API Specification Standard:** Validates structural consistency against OpenAPI 3.0 standards (`openapi.yaml`). |
 
 ---
 
@@ -98,5 +97,7 @@ The repo includes a pre-configured `render.yaml` Blueprint.
 Distributed under the **MIT License**. See [`LICENSE`](https://www.google.com/search?q=./LICENSE) for full details.
 
 ```
+
+3. 替换完成后，点击右上角绿色的 **Commit changes...** 按钮即可保存！[cite: 4]
 
 ```
