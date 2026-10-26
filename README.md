@@ -79,7 +79,7 @@ ZAPIER_WEBHOOK_URL = "your-zapier-url" # Optional
 streamlit run APP.py
 
 ```
-
+> 💡 **Hackathon Demo Note:** The Zapier webhook is pre-configured to route test notification payloads to the developer's demo inbox, providing an instant end-to-end proof of concept when judges test deal finalization.
 ---
 
 ## ☁️ Render Blueprint Deployment
