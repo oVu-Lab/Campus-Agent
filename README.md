@@ -105,8 +105,6 @@ streamlit run APP.py
 
 Open `http://localhost:8501` in your browser.
 
-```
-
 ---
 
 ## ☁️ Render Blueprint Deployment
