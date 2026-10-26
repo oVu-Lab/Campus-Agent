@@ -1,0 +1,12 @@
+.venv/
+.agents/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.Python
+.env
+.streamlit/secrets.toml
+*.egg-info/
+dist/
+build/
+.DS_Store

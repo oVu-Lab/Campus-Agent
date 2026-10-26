@@ -1,0 +1,5 @@
+pytest>=8.0,<9
+requests>=2.31,<3
+streamlit>=1.46,<2
+pandas>=1.4
+streamlit-aggrid>=1.2,<2
