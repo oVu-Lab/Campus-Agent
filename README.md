@@ -48,38 +48,66 @@
 | **Render** | **Cloud Hosting:** Continuous integration deployment via `render.yaml` Blueprint managing environment secrets securely. |
 | **APIMatic** | **API Specification Standard:** Validates structural consistency against OpenAPI 3.0 standards (`openapi.yaml`). |
 
----
-
+---```markdown
 ## 🚀 Local Quickstart Guide
 
-### 1. Clone & Setup Virtual Environment
+### Prerequisites
+* Python 3.10 or higher
+* Git
+
+### 1. Clone Repository & Setup Virtual Environment
+```bash
+git clone [https://github.com/oVu-Lab/Campus-Agent.git](https://github.com/oVu-Lab/Campus-Agent.git)
+cd Campus-Agent
+
+# Create and activate virtual environment
+python -m venv .venv
+
+# On macOS/Linux:
+source .venv/bin/activate
+
+# On Windows (Command Prompt):
+.venv\Scripts\activate.bat
+
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+
+```
+
+### 2. Install Dependencies
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install --upgrade pip
 pip install -r requirements.txt
 
 ```
 
-### 2. Configure Environment Secrets
+### 3. Configure Local Secrets
 
-For repeatable local development, create `.streamlit/secrets.toml` *(git-ignored)*:
+Create `.streamlit/secrets.toml` in the project root *(this file is git-ignored)*:
 
 ```toml
-GEMINI_API_KEY = "your-gemini-key"
-PAYPAL_CLIENT_ID = "your-paypal-id"
-PAYPAL_SECRET = "your-paypal-secret"
-ZAPIER_WEBHOOK_URL = "your-zapier-url" # Optional
+GEMINI_API_KEY = "your-gemini-api-key"
+PAYPAL_CLIENT_ID = "your-paypal-client-id"
+PAYPAL_SECRET = "your-paypal-client-secret"
+ZAPIER_WEBHOOK_URL = "your-zapier-webhook-url" # Optional
 
 ```
 
-### 3. Launch App
+> **Note:** If API keys are left blank in `secrets.toml`, you can also enter them directly into the **Seller Dashboard** UI during your local browser session!
+
+### 4. Launch Application
 
 ```bash
 streamlit run APP.py
 
 ```
-> 💡 **Hackathon Demo Note:** The Zapier webhook is pre-configured to route test notification payloads to the developer's demo inbox, providing an instant end-to-end proof of concept when judges test deal finalization.
+
+Open `http://localhost:8501` in your browser.
+
+```
+
+```
 ---
 
 ## ☁️ Render Blueprint Deployment
