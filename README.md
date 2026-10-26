@@ -98,6 +98,4 @@ Distributed under the **MIT License**. See [`LICENSE`](https://www.google.com/se
 
 ```
 
-3. 替换完成后，点击右上角绿色的 **Commit changes...** 按钮即可保存！[cite: 4]
-
 ```
