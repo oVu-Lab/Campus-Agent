@@ -11,3 +11,6 @@ __pycache__/
 dist/
 build/
 .DS_Store
+.vscode/.github:copilot-instructions.md
+.vscode/settings.json
+skills-lock.json
