@@ -31,9 +31,35 @@ except ImportError as exc:
 
 
 # Listing rules are enforced by the checkout code, not only by the prompt.
-ITEM_NAME = "Yamaha F310 Acoustic Guitar"
-LISTING_PRICE = Decimal("90.00")
-HARD_FLOOR = Decimal("65.00")
+CAMPUS_CATALOG = {
+    "Yamaha F310 Acoustic Guitar": {
+        "listing_price": Decimal("90.00"),
+        "floor_price": Decimal("65.00"),
+        "description": "Yamaha F310 Acoustic Guitar, excellent shape, fresh strings, includes gig bag.",
+        "image_url": "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&w=800&q=80",
+    },
+    "Calculus Textbook": {
+        "listing_price": Decimal("100.00"),
+        "floor_price": Decimal("70.00"),
+        "description": "Calculus Textbook, lightly used with clean pages and helpful margin notes.",
+        "image_url": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
+    },
+    "Mini Fridge": {
+        "listing_price": Decimal("150.00"),
+        "floor_price": Decimal("110.00"),
+        "description": "Mini Fridge, compact dorm size, clean, quiet, and ready for pickup.",
+        "image_url": "https://images.unsplash.com/photo-1584992236310-6edddc08acff?auto=format&fit=crop&w=800&q=80",
+    },
+    "Electric Scooter": {
+        "listing_price": Decimal("300.00"),
+        "floor_price": Decimal("220.00"),
+        "description": "Electric Scooter, campus-ready with a charged battery and working lights.",
+        "image_url": "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=800&q=80",
+    },
+}
+ITEM_NAME = next(iter(CAMPUS_CATALOG))
+LISTING_PRICE = CAMPUS_CATALOG[ITEM_NAME]["listing_price"]
+HARD_FLOOR = CAMPUS_CATALOG[ITEM_NAME]["floor_price"]
 
 PAYPAL_TOKEN_URL = "https://api-m.sandbox.paypal.com/v1/oauth2/token"
 PAYPAL_ORDERS_URL = "https://api-m.sandbox.paypal.com/v2/checkout/orders"
@@ -114,6 +140,31 @@ def current_item_description() -> str:
         return "Yamaha F310 Acoustic Guitar, excellent shape, fresh strings, includes gig bag."
 
 
+def current_item_name() -> str:
+    return str(st.session_state.get("item_name", ITEM_NAME))
+
+
+def reset_for_catalog_item() -> None:
+    """Load the selected listing and clear state that belongs to the old deal."""
+    item_name = st.session_state.catalog_item
+    item = CAMPUS_CATALOG[item_name]
+    st.session_state.item_name = item_name
+    st.session_state.listing_price = float(item["listing_price"])
+    st.session_state.floor_price = float(item["floor_price"])
+    st.session_state.item_description = item["description"]
+    st.session_state.messages = []
+    st.session_state.chat_history = st.session_state.messages
+    st.session_state.payment_url = None
+    st.session_state.final_price = None
+    st.session_state.agreed_price = None
+    st.session_state.active_price = str(item["listing_price"])
+    st.session_state.deal_accepted = False
+    st.session_state.checkout_celebration = False
+    st.session_state.zapier_status = "idle"
+    st.session_state.zapier_triggered_for_deal = False
+    st.session_state.zapier_future = None
+
+
 def configured_zapier_webhook_url(override: str | None = None) -> str:
     """Prefer deployment configuration, then use the optional session value."""
     configured = external_config_value("ZAPIER_WEBHOOK_URL")
@@ -182,7 +233,10 @@ def render_zapier_feedback() -> None:
     elif status == "pending":
         st.info("⚡ Seller notification is being dispatched to Zapier…")
     elif status == "error":
-        st.warning(f"Zapier notification was not sent: {st.session_state.get('zapier_error', '')}")
+        st.info(
+            f"Zapier could not send the optional notification yet: "
+            f"{st.session_state.get('zapier_error', '')}"
+        )
     elif status == "not_configured":
         st.caption("Zapier notification skipped: configure a webhook URL in the seller dashboard.")
 
@@ -205,7 +259,7 @@ def render_inventory_grid(active_offer: Decimal, deal_finalized: bool) -> None:
     """Render the live listing row and sync seller price edits back to session state."""
     rows = [
         {
-            "Item": ITEM_NAME,
+            "Item": current_item_name(),
             "Listing Price": float(current_listing_price()),
             "Protected Floor": float(current_floor_price()),
             "Active Buyer Offer": float(active_offer),
@@ -412,32 +466,55 @@ def ask_gemini(
                     json=payload,
                     timeout=30,
                 )
-            except requests.RequestException:
-                last_error = f"Could not connect to the Gemini service ({model})."
-                continue
-
-            if response.status_code == 503:
-                last_error = f"{model} is busy. Retrying."
-                continue
-            if response.status_code >= 400:
-                last_error = f"Gemini returned HTTP {response.status_code} for {model}."
-                break
-
-            data = response.json()
-            candidate = (data.get("candidates") or [{}])[0]
-            parts = (candidate.get("content") or {}).get("parts") or []
-            text = "".join(part.get("text", "") for part in parts).strip()
-            for part in parts:
-                function_call = part.get("functionCall") or {}
-                if function_call.get("name") == PAYMENT_FUNCTION_NAME:
-                    arguments = function_call.get("args") or {}
-                    return (
-                        text or "Sounds good—let's get the payment set up.",
-                        arguments.get("agreed_price"),
+                response_text = getattr(response, "text", None)
+                if response_text is not None and not response_text.strip():
+                    raise RuntimeError(
+                        f"Gemini returned an empty response for {model}."
                     )
-            if text:
-                return text, None
-            last_error = "Gemini returned an empty reply."
+
+                if response.status_code == 503:
+                    last_error = f"{model} is busy. Retrying."
+                    continue
+                if response.status_code >= 400:
+                    last_error = f"Gemini returned HTTP {response.status_code} for {model}."
+                    break
+
+                data = response.json()
+                candidates = data.get("candidates") or []
+                if not candidates:
+                    feedback = data.get("promptFeedback") or {}
+                    block_reason = feedback.get("blockReason")
+                    raise RuntimeError(
+                        "Gemini blocked the negotiation response"
+                        + (f" ({block_reason})." if block_reason else ".")
+                    )
+
+                candidate = candidates[0] or {}
+                parts = (candidate.get("content") or {}).get("parts") or []
+                if not parts:
+                    finish_reason = candidate.get("finishReason")
+                    raise RuntimeError(
+                        "Gemini returned no response content"
+                        + (f" ({finish_reason})." if finish_reason else ".")
+                    )
+
+                text = "".join(
+                    str(part.get("text", "")) for part in parts if part.get("text")
+                ).strip()
+                for part in parts:
+                    function_call = part.get("functionCall") or {}
+                    if function_call.get("name") == PAYMENT_FUNCTION_NAME:
+                        arguments = function_call.get("args") or {}
+                        return (
+                            text or "Sounds good—let's get the payment set up.",
+                            arguments.get("agreed_price"),
+                        )
+                if text:
+                    return text, None
+                raise RuntimeError("Gemini returned no usable negotiation text.")
+            except Exception as exc:
+                last_error = f"Gemini negotiation failed for {model}: {exc}"
+                continue
     raise RuntimeError(last_error)
 
 
@@ -521,27 +598,26 @@ Act strictly as a professional, smooth campus proxy negotiator representing a st
 """
 
 PERSONA_INSTRUCTIONS = {
-    "🛡️ Strict Guardrail (Protects Configured Floor)": (
-        "Be especially disciplined and firm on price. Defend the listing value, "
-        "make concessions slowly, and prioritize clear seller boundaries."
+    "🔴 Firm Seller": (
+        "Hold near the listing price and make only minor price drops as the buyer "
+        "approaches the protected floor."
     ),
-    "🤝 Motivated Seller (Flexible & Quick Handoff)": (
-        "Sound warm and ready to complete a convenient campus handoff. Be more "
-        "open to measured concessions and efficient agreement, while never going "
-        "below the hard floor."
+    "🟡 Balanced Student": (
+        "Use standard counter-offers that balance the listing price and protected "
+        "floor while keeping the negotiation friendly."
     ),
-    "🧠 Analytical Researcher (Data-driven Pricing)": (
-        "Explain counter-offers with concise reasoning based only on the seller-configured "
-        "item details and known listing terms. Do not invent comparable sales or external "
-        "market data."
+    "🟢 Eager to Move Out": (
+        "Move quickly toward agreement and accept reasonable offers close to the "
+        "protected floor, while never going below it."
     ),
 }
 
 
 def system_instruction_for_persona(persona: str) -> str:
     """Insert the selected tone while retaining the shared hard negotiation rules."""
+    persona = str(persona or "")
     persona_instruction = PERSONA_INSTRUCTIONS.get(
-        persona, PERSONA_INSTRUCTIONS["🛡️ Strict Guardrail (Protects Configured Floor)"]
+        persona, PERSONA_INSTRUCTIONS["🔴 Firm Seller"]
     )
     return (
         SYSTEM_INSTRUCTION.replace("{PERSONA_INSTRUCTION}", persona_instruction)
@@ -558,6 +634,25 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded",
 )
+
+st.session_state.setdefault("messages", [])
+st.session_state.setdefault("chat_history", st.session_state.messages)
+st.session_state.setdefault("payment_url", None)
+st.session_state.setdefault("final_price", None)
+st.session_state.setdefault("agreed_price", None)
+st.session_state.setdefault("list_price_at_deal", None)
+st.session_state.setdefault("active_price", str(LISTING_PRICE))
+st.session_state.setdefault("checkout_celebration", False)
+st.session_state.setdefault("seller_persona", next(iter(PERSONA_INSTRUCTIONS)))
+st.session_state.setdefault("item_name", ITEM_NAME)
+st.session_state.setdefault("catalog_item", ITEM_NAME)
+st.session_state.setdefault("listing_price", float(LISTING_PRICE))
+st.session_state.setdefault("floor_price", float(HARD_FLOOR))
+st.session_state.setdefault("item_description", CAMPUS_CATALOG[ITEM_NAME]["description"])
+st.session_state.setdefault("deal_accepted", False)
+st.session_state.setdefault("zapier_status", "idle")
+st.session_state.setdefault("zapier_triggered_for_deal", False)
+st.session_state.setdefault("zapier_future", None)
 
 st.markdown(
     """
@@ -2006,19 +2101,43 @@ st.markdown(
     div[data-testid="stExpander"] summary {
         padding: 0.85rem 1rem !important;
         border-bottom: 1px solid rgba(255,196,57,0.32);
+        color: #FFFFFF !important;
         font-weight: 700 !important;
+    }
+    div[data-testid="stExpander"] summary p,
+    div[data-testid="stExpander"] summary span {
+        color: #FFFFFF !important;
     }
     div[data-testid="stExpander"] summary svg { color: #FFC439 !important; fill: #FFC439 !important; }
     div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
         background: #F9F6F0 !important; padding: 0.85rem !important;
     }
     .deal-terms-card {
-        border: 1px solid #D1C7B7 !important; border-radius: 12px !important;
-        background: #F9F6F0 !important;
-        box-shadow: 0 4px 12px rgba(18,53,36,0.045);
+        position: relative; overflow: hidden;
+        border: 1px solid rgba(18,53,36,0.18) !important;
+        border-radius: 14px !important;
+        background:
+            radial-gradient(circle at 100% 0%, rgba(216,177,90,0.2), transparent 42%),
+            linear-gradient(145deg, #fffdf8 0%, #f1eee5 100%) !important;
+        box-shadow: 0 8px 18px rgba(18,53,36,0.1), inset 0 1px 0 rgba(255,255,255,0.9);
     }
-    .deal-terms-label { color: #687369 !important; }
-    .deal-terms-value { color: #1A1C1E !important; }
+    .deal-terms-label {
+        color: #123524 !important; font-weight: 800 !important;
+        letter-spacing: 0.075em !important;
+    }
+    .deal-terms-value {
+        color: #1A1C1E !important; font-weight: 600 !important;
+    }
+    .deal-terms-grid > .deal-terms-card:first-child {
+        border-top: 4px solid #123524 !important;
+    }
+    .deal-terms-grid > .deal-terms-card:nth-child(2) {
+        border-top: 4px solid #D8B15A !important;
+    }
+    .deal-terms-grid > .deal-terms-card:nth-child(3) {
+        border-top: 4px solid #2F7652 !important;
+    }
+    .seller-privacy-spacer { height: 0.9rem; }
     [data-testid="stButton"] button,
     [data-testid="stLinkButton"] a {
         transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease !important;
@@ -2227,25 +2346,26 @@ st.markdown(
 st.caption(
     "Demo console — the AI negotiates and can create a PayPal Sandbox checkout order."
 )
+if not config_value("GEMINI_API_KEY"):
+    st.info(
+        "💡 **Quick Tip:** Add your Google Gemini API key in the Seller Settings "
+        "panel to start chatting with the negotiation agent!"
+    )
+if not config_value("PAYPAL_CLIENT_ID") or not config_value("PAYPAL_SECRET"):
+    st.info(
+        "💳 **PayPal Preview:** To generate a live sandbox checkout link when a "
+        "deal closes, add your PayPal Sandbox credentials in the settings panel."
+    )
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-if "payment_url" not in st.session_state:
-    st.session_state.payment_url = None
-if "final_price" not in st.session_state:
-    st.session_state.final_price = None
-if "active_price" not in st.session_state:
-    st.session_state.active_price = str(current_listing_price())
-if "checkout_celebration" not in st.session_state:
-    st.session_state.checkout_celebration = False
-if "seller_persona" not in st.session_state:
-    st.session_state.seller_persona = next(iter(PERSONA_INSTRUCTIONS))
-if "item_name" not in st.session_state:
-    st.session_state.item_name = ITEM_NAME
-if "zapier_status" not in st.session_state:
-    st.session_state.zapier_status = "idle"
-if "zapier_triggered_for_deal" not in st.session_state:
-    st.session_state.zapier_triggered_for_deal = False
+with st.container(border=True):
+    st.subheader("Choose a campus listing")
+    st.selectbox(
+        "Item",
+        options=list(CAMPUS_CATALOG),
+        key="catalog_item",
+        on_change=reset_for_catalog_item,
+        help="Changing listings starts a fresh negotiation for the selected item.",
+    )
 
 listing_price = current_listing_price()
 floor_price = current_floor_price()
@@ -2301,15 +2421,7 @@ with st.expander("Deal Terms & Bundle Breakdown", expanded=False):
         unsafe_allow_html=True,
     )
 
-unconfigured_credentials = missing_credentials()
-if unconfigured_credentials:
-    st.warning(
-        "Some integrations are not configured yet. Add the missing credentials in "
-        f"the private seller dashboard or set them in Render / Streamlit secrets: "
-        f"{', '.join(unconfigured_credentials)}."
-    )
-
-deal_closed = st.session_state.payment_url is not None
+deal_closed = bool(st.session_state.get("deal_accepted"))
 if st.session_state.pop("_clear_chat_draft", False):
     st.session_state["campus_chat_input"] = ""
 if st.session_state.zapier_status == "pending":
@@ -2317,13 +2429,16 @@ if st.session_state.zapier_status == "pending":
 elif st.session_state.zapier_status == "sent":
     st.success("⚡ Deal closed! Zapier automated workflow triggered.")
 elif st.session_state.zapier_status == "error":
-    st.warning(f"Zapier notification was not sent: {st.session_state.get('zapier_error', '')}")
+    st.info(
+        f"Zapier could not send the optional notification yet: "
+        f"{st.session_state.get('zapier_error', '')}"
+    )
 elif st.session_state.zapier_status == "not_configured":
-    st.caption("Zapier notification skipped: configure a webhook URL in the seller dashboard.")
+    st.caption("✨ Deal saved! (Zapier webhook integration is optional and currently inactive).")
 
 with st.sidebar:
     st.markdown(
-        '<div class="seller-private-badge">🔒 Owner-Only Private Control Panel</div>',
+        '<div class="seller-private-badge">🔒 Seller-Only Private Panel</div>',
         unsafe_allow_html=True,
     )
     with st.container(border=True):
@@ -2331,7 +2446,6 @@ with st.sidebar:
         st.number_input(
             "Listing Price ($)",
             min_value=0.0,
-            value=90.0,
             step=5.0,
             key="listing_price",
         )
@@ -2342,13 +2456,11 @@ with st.sidebar:
             "Absolute Bottom Floor ($ - AI Min Price)",
             min_value=0.0,
             max_value=listing_widget_value,
-            value=65.0,
             step=5.0,
             key="floor_price",
         )
         st.text_input(
             "Item Description / Perks",
-            value="Yamaha F310 Acoustic Guitar, excellent shape, fresh strings, includes gig bag.",
             key="item_description",
         )
         st.selectbox(
@@ -2389,9 +2501,9 @@ with st.sidebar:
             unsafe_allow_html=True,
         )
         st.image(
-            "https://images.unsplash.com/photo-1510915361894-db8b60106cb1?w=800",
+            CAMPUS_CATALOG[current_item_name()]["image_url"],
             caption=f"For sale: {current_item_description()}",
-            alt="Acoustic guitar",
+            alt=f"Photo of {current_item_name()}",
         )
         sidebar_listing_price = current_listing_price()
         sidebar_floor_price = current_floor_price()
@@ -2421,9 +2533,13 @@ with st.sidebar:
             """,
             unsafe_allow_html=True,
         )
+        st.markdown('<div class="seller-privacy-spacer"></div>', unsafe_allow_html=True)
         st.info(
-            "Try negotiating or testing prompt-injection attempts. Checkout is blocked "
-            "outside the seller's private price limits."
+            "🔒 **Session & Credential Privacy:**\n\n"
+            "API keys and credentials entered during this session are processed strictly "
+            "in-memory within your local browser session and are never saved to disk or "
+            "logged to a remote database. Guardrails ensure all checkout actions strictly "
+            "adhere to private floor constraints."
         )
 
 if not st.session_state.messages and not deal_closed:
@@ -2436,6 +2552,38 @@ if not st.session_state.messages and not deal_closed:
         """,
         unsafe_allow_html=True,
     )
+
+
+def render_deal_receipt() -> None:
+    """Render the finalized deal summary only after a PayPal link exists."""
+    if not st.session_state.get("deal_accepted") or not st.session_state.get("payment_url"):
+        return
+
+    agreed_price = Decimal(str(st.session_state.final_price))
+    original_price = Decimal(
+        str(st.session_state.get("list_price_at_deal") or current_listing_price())
+    )
+    savings = max(Decimal("0.00"), original_price - agreed_price)
+    with st.container(border=True):
+        st.subheader("Deal summary")
+        metrics = st.columns(3)
+        metrics[0].metric("Final price", f"${agreed_price:.2f}")
+        metrics[1].metric("Original price", f"${original_price:.2f}")
+        metrics[2].metric(
+            "Buyer savings",
+            f"${savings:.2f}",
+            delta=f"-${savings:.2f}",
+        )
+        st.link_button(
+            "💳 Complete PayPal Checkout",
+            url=st.session_state.payment_url,
+            type="primary",
+            width="stretch",
+        )
+        if st.session_state.get("zapier_status") in {"pending", "sent"}:
+            st.success("Zapier Notification: Triggered")
+        else:
+            st.caption("Zapier Notification: Not configured")
 
 
 def render_paypal_button(amount: object, item_name: str) -> None:
@@ -2463,6 +2611,8 @@ st.markdown(
     f'<div class="negotiation-session-badge">⚡ Live AI Negotiation Session · Protected Floor: ${current_floor_price():.2f}</div>',
     unsafe_allow_html=True,
 )
+
+render_deal_receipt()
 
 for message in st.session_state.messages:
     content = message["content"]
@@ -2662,6 +2812,8 @@ if user_input:
             st.session_state.payment_url = pay_url
             st.session_state.final_price = f"{Decimal(str(agreed_price)):.2f}"
             st.session_state.agreed_price = float(Decimal(str(agreed_price)))
+            st.session_state.list_price_at_deal = float(current_listing_price())
+            st.session_state.deal_accepted = True
             st.session_state.active_price = st.session_state.final_price
             st.session_state.checkout_celebration = True
             if not st.session_state.zapier_triggered_for_deal:
@@ -2693,8 +2845,56 @@ if user_input:
             )
     except (requests.RequestException, RuntimeError, ValueError) as exc:
         typing_placeholder.empty()
+        if not config_value("GEMINI_API_KEY"):
+            fallback_message = (
+                "Hi there! I'm ready to negotiate, but I need my Gemini API key "
+                "activated first. Drop your key into the Seller Settings panel on "
+                "the side, and we can make a deal!"
+            )
+            st.session_state.chat_history.append(
+                {"role": "assistant", "content": fallback_message}
+            )
+            with st.chat_message("assistant", avatar="🎓"):
+                st.markdown(
+                    assistant_reply_markup(fallback_message),
+                    unsafe_allow_html=True,
+                )
+        elif (
+            locals().get("agreed_price") is not None
+            and (
+                not config_value("PAYPAL_CLIENT_ID")
+                or not config_value("PAYPAL_SECRET")
+            )
+        ):
+            agreed_reply = locals().get("ai_reply", "")
+            if agreed_reply:
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": agreed_reply}
+                )
+                with st.chat_message("assistant", avatar="🎓"):
+                    st.markdown(
+                        assistant_reply_markup(agreed_reply),
+                        unsafe_allow_html=True,
+                    )
+            st.info(
+                "🎉 **Deal Agreed!** The agent successfully reached an agreement. "
+                "To create an active test payment link, please add your PayPal "
+                "Sandbox Client ID and Secret in settings."
+            )
+        else:
+            st.info(f"We couldn't complete that step just yet: {exc}")
+    except Exception as exc:
+        typing_placeholder.empty()
+        fallback_message = "The seller agent is temporarily unavailable. Please try again."
+        st.session_state.chat_history.append(
+            {"role": "assistant", "content": fallback_message}
+        )
         with st.chat_message("assistant", avatar="🎓"):
-            st.error(f"Could not complete that step: {exc}")
+            st.info(f"Gemini negotiation needs a moment: {exc}")
+            st.markdown(
+                assistant_reply_markup(fallback_message),
+                unsafe_allow_html=True,
+            )
 
     # Refresh the sidebar meter and clear a prefilled quick-action draft.
     st.rerun()
