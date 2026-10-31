@@ -71,7 +71,7 @@ PAYPAL_CANCEL_URL = os.environ.get(
     "PAYPAL_CANCEL_URL", f"{APP_BASE_URL}/?paypal=cancel"
 )
 
-GEMINI_MODELS = ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]
+GEMINI_MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3.6-flash"]
 GEMINI_API_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 )
@@ -2138,6 +2138,20 @@ st.markdown(
         border-top: 4px solid #2F7652 !important;
     }
     .seller-privacy-spacer { height: 0.9rem; }
+    .seller-privacy-notice {
+        margin-top: 0.9rem;
+        padding: 0.85rem 0.95rem;
+        border: 1px solid rgba(255,255,255,0.28);
+        border-radius: 12px;
+        background: linear-gradient(145deg, rgba(18,53,36,0.96), rgba(11,36,26,0.96));
+        color: #FFFFFF !important;
+        font: 500 0.82rem/1.5 'Inter', sans-serif;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 16px rgba(0,0,0,0.16);
+    }
+    .seller-privacy-notice strong,
+    .seller-privacy-notice span {
+        color: #FFFFFF !important;
+    }
     [data-testid="stButton"] button,
     [data-testid="stLinkButton"] a {
         transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease !important;
@@ -2533,13 +2547,15 @@ with st.sidebar:
             """,
             unsafe_allow_html=True,
         )
-        st.markdown('<div class="seller-privacy-spacer"></div>', unsafe_allow_html=True)
-        st.info(
-            "🔒 **Session & Credential Privacy:**\n\n"
+        st.markdown(
+            '<div class="seller-privacy-notice">'
+            "<strong>🔒 Session &amp; Credential Privacy:</strong><br><br>"
             "API keys and credentials entered during this session are processed strictly "
             "in-memory within your local browser session and are never saved to disk or "
             "logged to a remote database. Guardrails ensure all checkout actions strictly "
             "adhere to private floor constraints."
+            "</div>",
+            unsafe_allow_html=True,
         )
 
 if not st.session_state.messages and not deal_closed:
