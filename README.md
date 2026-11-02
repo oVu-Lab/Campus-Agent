@@ -13,7 +13,7 @@
 
 ---
 
-> **CampusAgent** transforms university secondhand trading by deploying autonomous **Google Gemini AI** agents to negotiate item prices on behalf of student sellers within strict floor-price guardrails, concluding transactions instantly via **PayPal Sandbox** and **Zapier** automation.
+> **CampusAgent** transforms university secondhand trading by deploying **Google Gemini AI** agents to negotiate item prices on behalf of student sellers within strict floor-price guardrails, concluding transactions instantly via **PayPal Sandbox** and **Zapier** automation.
 
 </div>
 
